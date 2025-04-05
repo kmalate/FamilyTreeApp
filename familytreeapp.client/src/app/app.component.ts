@@ -16,8 +16,6 @@ interface WeatherForecast {
   styleUrl: './app.component.css'
 })
 export class AppComponent implements OnInit {
-  public forecasts: WeatherForecast[] = [];
-
   constructor(private familyService: FamilyService) {}
 
   ngOnInit() {
@@ -25,16 +23,21 @@ export class AppComponent implements OnInit {
 
     if (divTree) {
       var family = new FamilyTree(divTree, {
+        mode: "dark",
+        nodeTreeMenu: true,
         nodeBinding: {
           field_0: "name",
-          img_0: "img"
+          field_1: "id"
         },
       });
 
-      this.familyService.getForecasts().subscribe();
-
       this.familyService.getFamilyNodes().subscribe((data) => {
         family.load(data);
+      });
+
+      family.onUpdateNode((args) => {
+        //TODO: sync changes to database
+        console.log(args);
       });
 
       //family.load([
