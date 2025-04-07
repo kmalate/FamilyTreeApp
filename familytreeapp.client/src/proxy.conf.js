@@ -13,7 +13,7 @@ const PROXY_CONFIG = [
   },
   {
     context: [
-      "/family/getfamilytreenodes",
+      "/family",
     ],
     target,
     secure: false

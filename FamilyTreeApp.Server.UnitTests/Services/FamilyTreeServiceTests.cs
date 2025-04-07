@@ -5,9 +5,6 @@ using FamilyTreeApp.Server.Core.Services;
 using FamilyTreeApp.Server.Infrastructure.Interfaces;
 using FamilyTreeApp.Server.Infrastructure.Models;
 using Moq;
-using NUnit.Framework;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 namespace FamilyTreeApp.Server.UnitTests.Services
 {
@@ -48,7 +45,7 @@ namespace FamilyTreeApp.Server.UnitTests.Services
             {
                 new FamilyNodeDTO
                 {
-                    Id = 1,
+                    Id = "1",
                     Pids = new List<int> { 2, 3 },
                     Mid = 4,
                     Fid = 5,
@@ -69,9 +66,65 @@ namespace FamilyTreeApp.Server.UnitTests.Services
             var result = await _familyTreeService.GetFamilyTreeNodesAsync();
 
             // Assert
-            Assert.IsNotNull(result);
-            Assert.IsInstanceOf<IEnumerable<FamilyNodeDTO>>(result);
-            Assert.AreEqual(familyNodeDTOs, result);
+            Assert.That(result, Is.Not.Null);
+            Assert.That(result, Is.InstanceOf<IEnumerable<FamilyNodeDTO>>());
+            Assert.That(result, Is.EqualTo(familyNodeDTOs));
+        }
+
+        [Test]
+        public async Task UpdateFamilyTreeNodesAsync_Should_Update_If_UpdateNodesData_Has_Value()
+        {
+            // Arrange
+            var args = new UpdateNodeArgsDTO {
+                UpdateNodesData =
+                [
+                    new () { Id = "1", Name = "John Doe", Pids = [2], Gender= "male" } 
+                ],
+                AddNodesData = []              
+            };
+
+            _familyTreeRepositoryMock.Setup(repo => repo.GetPersonByIdAsync(It.IsAny<int>()))
+                .ReturnsAsync(new Person { PersonId = 1 });
+
+            // Act
+            var result = await _familyTreeService.UpdateFamilyTreeNodesAsync(args);
+
+            // Assert
+            _familyTreeRepositoryMock.Verify(r => r.UpdatePersonAsync(It.IsAny<Person>()), Times.Once);
+        }
+
+        [Test]
+        public async Task UpdateFamilyTreeNodesAsync_Should_Add_if_AddNodesData_Has_Value_And_Return_OldId_NewId()
+        {
+            // Arrange
+            var args = new UpdateNodeArgsDTO
+            {
+                UpdateNodesData = [],
+                AddNodesData =
+                [
+                    new () { Id = "oldId1", Name = "John Doe", Pids = [2], Gender= "male" }
+                ],
+            };
+
+            _familyTreeRepositoryMock.Setup(repo => repo.AddPersonAsync(It.IsAny<Person>()))
+                .ReturnsAsync(new Person { PersonId = 1 });
+
+            _familyTreeRepositoryMock.Setup(respo => respo.GetAllPersonsByIdListAsync(It.IsAny<int[]>()))
+                .ReturnsAsync(new List<Person> { new Person { PersonId = 2 } });
+
+            // Act
+            var result = await _familyTreeService.UpdateFamilyTreeNodesAsync(args);
+
+            // Assert
+            _familyTreeRepositoryMock.Verify(r => r.AddPersonAsync(It.IsAny<Person>()), Times.Once);
+            _familyTreeRepositoryMock.Verify(r => r.AddRelationShipAsync(It.IsAny<Relationship>()), Times.Once);
+
+             var expected = new List<Dictionary<string, string>>
+            {
+                new Dictionary<string, string> { { "oldId1", "1" } }
+            };
+
+            Assert.That(result, Is.EqualTo(expected));
         }
     }
 }

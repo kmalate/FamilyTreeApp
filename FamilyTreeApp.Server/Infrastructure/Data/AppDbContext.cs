@@ -10,6 +10,8 @@ namespace FamilyTreeApp.Server.Infrastructure
         }
 
         public DbSet<PersonRelationship> PersonRelationships { get; set; }
+        public DbSet<Person> Person { get; set; }
+        public DbSet<Relationship> Relationship { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

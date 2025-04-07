@@ -16,11 +16,18 @@ namespace FamilyTreeApp.Server.Controllers
 
         [HttpGet]
         [Route("GetFamilyTreeNodes")]
-        //public Task<IEnumerable<FamilyNodeDTO>> GetFamilyTreeNodes() {
         public async Task<IActionResult> GetFamilyTreeNodes()
         {
             var data = await _familyTreeService.GetFamilyTreeNodesAsync();
             return Ok(data);
-        } 
+        }
+
+        [HttpPost]
+        [Route("UpdateFamilyTreeNodes")]
+        public async Task<IActionResult> UpdateFamilyTreeNodes([FromBody] UpdateNodeArgsDTO updateNodeArgs)
+        {
+            var data = await _familyTreeService.UpdateFamilyTreeNodesAsync(updateNodeArgs);
+            return Ok(data);
+        }
     }
 }

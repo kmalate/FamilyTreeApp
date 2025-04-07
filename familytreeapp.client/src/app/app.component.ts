@@ -2,6 +2,8 @@ import { HttpClient } from '@angular/common/http';
 import { Component, OnInit } from '@angular/core';
 import FamilyTree from "@balkangraph/familytree.js";
 import { FamilyService } from './services/family.service';
+import { UpdateNodeArgs } from './models/update-node-args.model';
+import { FamilyNode } from './models/family-node.model';
 interface WeatherForecast {
   date: string;
   temperatureC: number;
@@ -16,13 +18,32 @@ interface WeatherForecast {
   styleUrl: './app.component.css'
 })
 export class AppComponent implements OnInit {
-  constructor(private familyService: FamilyService) {}
+  familyTree: FamilyTree | null = null;
+  constructor(private familyService: FamilyService) { }
+
+  private clientNodeObjectToFamilyNode(nodes: any[]): FamilyNode[] {
+    let familyNodes: FamilyNode[] = [];
+    nodes.forEach((node: any) => {
+      const familyNode: FamilyNode = {
+        id: node.id,
+        name: node.name ? node.name : "",
+        mid: node.mid ? node.mid : null,
+        fid: node.fid ? node.fid : null,
+        gender: node.gender ? node.gender : null,
+        pids: node.pids ? node.pids : null,
+      };
+
+      familyNodes.push(familyNode);
+    });
+
+    return familyNodes;
+  } 
 
   ngOnInit() {
     const divTree = document.getElementById("tree");
 
     if (divTree) {
-      var family = new FamilyTree(divTree, {
+      this.familyTree = new FamilyTree(divTree, {
         mode: "dark",
         nodeTreeMenu: true,
         nodeBinding: {
@@ -32,12 +53,22 @@ export class AppComponent implements OnInit {
       });
 
       this.familyService.getFamilyNodes().subscribe((data) => {
-        family.load(data);
+        if (this.familyTree) {
+          this.familyTree.load(data);
+        }        
       });
 
-      family.onUpdateNode((args) => {
-        //TODO: sync changes to database
-        console.log(args);
+      this.familyTree.onUpdateNode((args) => {
+        // convert FamilyTreeJS args to UpdateNodeArgs
+        const updateArgs: UpdateNodeArgs = {
+          addNodesData: this.clientNodeObjectToFamilyNode(args.addNodesData),
+          updateNodesData: this.clientNodeObjectToFamilyNode(args.updateNodesData),
+          removeNodeId: args.removeNodeId,
+        };
+
+        this.familyService.updateFamilyTreeNodes(updateArgs).subscribe((response) => {
+          this.familyTree?.replaceIds(response);
+        });
       });
 
       //family.load([

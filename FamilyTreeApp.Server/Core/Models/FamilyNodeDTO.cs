@@ -2,7 +2,7 @@
 {
     public class FamilyNodeDTO
     {
-        public int Id { get; set; }
+        public string Id { get; set; } = string.Empty;
         public IEnumerable<int>? Pids { get; set; } = new List<int>();
         public int? Mid { get; set; }
         public int? Fid { get; set; }

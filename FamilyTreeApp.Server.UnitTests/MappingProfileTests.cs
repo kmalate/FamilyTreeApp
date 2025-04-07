@@ -2,8 +2,6 @@ using AutoMapper;
 using FamilyTreeApp.Server.Core.Mapping;
 using FamilyTreeApp.Server.Core.Models;
 using FamilyTreeApp.Server.Infrastructure.Models;
-using NUnit.Framework;
-using System.Collections.Generic;
 
 namespace FamilyTreeApp.Server.UnitTests.Mapping
 {
@@ -52,12 +50,15 @@ namespace FamilyTreeApp.Server.UnitTests.Mapping
             var familyNodeDTO = _mapper.Map<FamilyNodeDTO>(personRelationship);
 
             // Assert
-            Assert.AreEqual(1, familyNodeDTO.Id);
-            Assert.AreEqual(new List<int> { 2, 3 }, familyNodeDTO.Pids);
-            Assert.AreEqual(4, familyNodeDTO.Mid);
-            Assert.AreEqual(5, familyNodeDTO.Fid);
-            Assert.AreEqual("John Doe", familyNodeDTO.Name);
-            Assert.AreEqual("Male", familyNodeDTO.Gender);
+            Assert.Multiple(() =>
+            {                
+                Assert.That(familyNodeDTO.Id.ToString(), Is.EqualTo("1"));
+                Assert.That(familyNodeDTO.Pids, Is.EqualTo(new List<int> { 2, 3 }));
+                Assert.That(familyNodeDTO.Mid, Is.EqualTo(4));
+                Assert.That(familyNodeDTO.Fid, Is.EqualTo(5));
+                Assert.That(familyNodeDTO.Name, Is.EqualTo("John Doe"));
+                Assert.That(familyNodeDTO.Gender, Is.EqualTo("Male"));
+            });
         }
     }
 }
