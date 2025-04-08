@@ -20,7 +20,7 @@ export class FamilyService {
   }
 
   updateFamilyTreeNodes(args: UpdateNodeArgs) {
-    return this.http.post<{[key: string]: string | number}>("/family/updatefamilytreenodes", args);
+    return this.http.post<{ [key: string]: string | number}>("/family/updatefamilytreenodes", args);
   }
 
 }

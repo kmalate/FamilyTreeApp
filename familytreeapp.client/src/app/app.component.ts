@@ -68,7 +68,6 @@ export class AppComponent implements OnInit {
 
         this.familyService.updateFamilyTreeNodes(updateArgs).subscribe((response) => {
           this.familyTree?.replaceIds(response);
-          //TODO: replacedIds OldId to NewId still not reflecting in UI
         });
       });
 

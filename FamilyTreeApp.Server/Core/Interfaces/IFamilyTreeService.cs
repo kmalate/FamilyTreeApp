@@ -15,6 +15,6 @@ namespace FamilyTreeApp.Server.Core.Interfaces
         /// </summary>
         /// <param name="updateNodeArgs"></param>
         /// <returns></returns>
-        Task<IEnumerable<Dictionary<string, string>>> UpdateFamilyTreeNodesAsync(UpdateNodeArgsDTO updateNodeArgs);
+        Task<Dictionary<string, string>> UpdateFamilyTreeNodesAsync(UpdateNodeArgsDTO updateNodeArgs);
     }
 }

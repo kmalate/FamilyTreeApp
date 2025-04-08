@@ -117,12 +117,12 @@ namespace FamilyTreeApp.Server.UnitTests.Services
 
             // Assert
             _familyTreeRepositoryMock.Verify(r => r.AddPersonAsync(It.IsAny<Person>()), Times.Once);
-            _familyTreeRepositoryMock.Verify(r => r.AddRelationShipAsync(It.IsAny<Relationship>()), Times.Once);
+            _familyTreeRepositoryMock.Verify(r => r.AddRelationShipAsync(It.IsAny<Relationship>()), Times.Once);           
 
-             var expected = new List<Dictionary<string, string>>
+            var expected = new Dictionary<string, string>
             {
-                new Dictionary<string, string> { { "oldId1", "1" } }
-            };
+                { "oldId1", "1" }
+            };            
 
             Assert.That(result, Is.EqualTo(expected));
         }

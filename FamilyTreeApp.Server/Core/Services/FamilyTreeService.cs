@@ -10,7 +10,7 @@ namespace FamilyTreeApp.Server.Core.Services
     {
         private readonly IFamilyTreeRepository _familyTreeRepository;
         private readonly IMapper _mapper;
-        private async Task<Dictionary<string, string>> AddNewPersonAsync(FamilyNodeDTO node)
+        private async Task<KeyValuePair<string, int>> AddNewPersonAsync(FamilyNodeDTO node)
         {
             var nameSplit = node.Name.Split(" ");
             var newPerson = new Person
@@ -21,22 +21,20 @@ namespace FamilyTreeApp.Server.Core.Services
             };
 
             newPerson = await _familyTreeRepository.AddPersonAsync(newPerson);
-            return new Dictionary<string, string>
-            {
-                { node.Id, newPerson.PersonId.ToString() }
-            };
+
+            return new KeyValuePair<string, int> (node.Id, newPerson.PersonId);
         }
 
-        private async Task AddNewPersonRelationshipAsync(FamilyNodeDTO addNodesData, IEnumerable<Dictionary<string, string>> oldIdNewIdList)
+        private async Task AddNewPersonRelationshipAsync(FamilyNodeDTO addNodesData, Dictionary<string, string> oldIdNewId)
         {            
             // new relationship/s
-            if (oldIdNewIdList.Any())
+            if (oldIdNewId.Any())
             {
-                var oldIdNewId = oldIdNewIdList.FirstOrDefault(x => x.ContainsKey(addNodesData.Id));
-                if (oldIdNewId != null)
+                var newId = oldIdNewId.GetValueOrDefault(addNodesData.Id);
+                if (newId != null)
                 {
                     var addRelationshipsTaskList = new List<Task>();
-                    var newPersonId = int.Parse(oldIdNewId[addNodesData.Id]);
+                    var newPersonId = int.Parse(newId);
                     // spouses
                     if (addNodesData.Pids != null && addNodesData.Pids.Any())
                     {
@@ -74,10 +72,10 @@ namespace FamilyTreeApp.Server.Core.Services
                     if (!string.IsNullOrEmpty(addNodesData.Fid))
                     {
                         //replace old Fid with new Id
-                        var oldNewFid = oldIdNewIdList.FirstOrDefault(x => x.ContainsKey(addNodesData.Fid));
+                        var oldNewFid = oldIdNewId.GetValueOrDefault(addNodesData.Fid);
                         if (oldNewFid != null)
                         {
-                            addNodesData.Fid = oldNewFid[addNodesData.Fid];
+                            addNodesData.Fid = oldNewFid;
                         }
 
                         var father = await _familyTreeRepository.GetPersonByIdAsync(int.Parse(addNodesData.Fid));
@@ -98,10 +96,10 @@ namespace FamilyTreeApp.Server.Core.Services
                     if (!string.IsNullOrEmpty(addNodesData.Mid))
                     {
                         //replace old Mid with new Id
-                        var oldNewMid = oldIdNewIdList.FirstOrDefault(x => x.ContainsKey(addNodesData.Mid));
+                        var oldNewMid = oldIdNewId.GetValueOrDefault(addNodesData.Mid);
                         if (oldNewMid != null)
                         {
-                            addNodesData.Mid = oldNewMid[addNodesData.Mid];
+                            addNodesData.Mid = oldNewMid;
                         }
 
                         var mother = await _familyTreeRepository.GetPersonByIdAsync(int.Parse(addNodesData.Mid));
@@ -137,14 +135,14 @@ namespace FamilyTreeApp.Server.Core.Services
         }
 
         /// <inheritdoc />
-        public async Task<IEnumerable<Dictionary<string, string>>> UpdateFamilyTreeNodesAsync(UpdateNodeArgsDTO updateNodeArgs)
+        public async Task<Dictionary<string, string>> UpdateFamilyTreeNodesAsync(UpdateNodeArgsDTO updateNodeArgs)
         {
-            var oldIdNewId = new List<Dictionary<string, string>>();
+            var oldIdNewId = new Dictionary<string, string>();
             // Add
             if (updateNodeArgs.AddNodesData.Length > 0)
             {
                 // Add new person/s first to get their database ids
-                var addPersonTaskList = new List<Task<Dictionary<string, string>>>();
+                var addPersonTaskList = new List<Task<KeyValuePair<string, int>>>();
                 foreach (var node in updateNodeArgs.AddNodesData)
                 {
 
@@ -155,11 +153,8 @@ namespace FamilyTreeApp.Server.Core.Services
                 
                 foreach (var task in addPersonTaskList)
                 {
-                    var result = task.Result;
-                    if (result != null)
-                    {
-                        oldIdNewId.Add(result);
-                    }
+                    var result = task.Result;                                        
+                    oldIdNewId.Add(result.Key, result.Value.ToString());                    
                 }
 
                 //Add new relationships
@@ -193,7 +188,7 @@ namespace FamilyTreeApp.Server.Core.Services
                 //TODO: Insert update relationship changes
             }
             
-            return oldIdNewId.AsEnumerable();
+            return oldIdNewId;
         }
     }
 }
