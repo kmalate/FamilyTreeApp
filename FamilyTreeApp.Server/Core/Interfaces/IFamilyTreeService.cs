@@ -16,5 +16,14 @@ namespace FamilyTreeApp.Server.Core.Interfaces
         /// <param name="updateNodeArgs"></param>
         /// <returns></returns>
         Task<Dictionary<string, string>> UpdateFamilyTreeNodesAsync(UpdateNodeArgsDTO updateNodeArgs);
+
+        /// <summary>
+        /// Update Peron's Relationship Data.
+        /// Add or remove them
+        /// </summary>
+        /// <param name="familyNodeDTO"></param>
+        /// <param name="oldIdNewId"></param>
+        /// <returns></returns>
+        Task UpdatePersonRelationships(FamilyNodeDTO familyNodeDTO, Dictionary<string, string> oldIdNewId);
     }
 }

@@ -75,12 +75,13 @@ namespace FamilyTreeApp.Server.UnitTests.Services
         public async Task UpdateFamilyTreeNodesAsync_Should_Update_If_UpdateNodesData_Has_Value()
         {
             // Arrange
-            var args = new UpdateNodeArgsDTO {
+            var args = new UpdateNodeArgsDTO
+            {
                 UpdateNodesData =
                 [
-                    new () { Id = "1", Name = "John Doe", Pids = ["2"], Gender= "male" } 
+                    new () { Id = "1", Name = "John Doe", Pids = ["2"], Gender= "male" }
                 ],
-                AddNodesData = []              
+                AddNodesData = []
             };
 
             _familyTreeRepositoryMock.Setup(repo => repo.GetPersonByIdAsync(It.IsAny<int>()))
@@ -109,22 +110,239 @@ namespace FamilyTreeApp.Server.UnitTests.Services
             _familyTreeRepositoryMock.Setup(repo => repo.AddPersonAsync(It.IsAny<Person>()))
                 .ReturnsAsync(new Person { PersonId = 1 });
 
-            _familyTreeRepositoryMock.Setup(respo => respo.GetAllPersonsByIdListAsync(It.IsAny<int[]>()))
-                .ReturnsAsync(new List<Person> { new Person { PersonId = 2 } });
-
             // Act
             var result = await _familyTreeService.UpdateFamilyTreeNodesAsync(args);
 
             // Assert
             _familyTreeRepositoryMock.Verify(r => r.AddPersonAsync(It.IsAny<Person>()), Times.Once);
-            _familyTreeRepositoryMock.Verify(r => r.AddRelationShipAsync(It.IsAny<Relationship>()), Times.Once);           
 
             var expected = new Dictionary<string, string>
             {
                 { "oldId1", "1" }
-            };            
+            };
 
             Assert.That(result, Is.EqualTo(expected));
         }
+
+        [Test]
+        public async Task UpdatePersonRelationships_No_Changes_On_Pids_Should_Not_Make_Changes()
+        {
+            // Arrange
+            _familyTreeRepositoryMock.Setup(repo => repo.GetSinglePersonRelationshipsAsync(It.IsAny<int>()))
+                .ReturnsAsync(new Relationship[] {
+                    new Relationship { PersonId1 = 1, PersonId2 = 2, RelationshipType = "spouse" },
+                    new Relationship { PersonId1 = 1, PersonId2 = 2, RelationshipType = "father-son" }
+                });
+            var familyNode = new FamilyNodeDTO { Name = "John Doe", Id = "1", Pids = ["2"] };
+
+            // Act
+            await _familyTreeService.UpdatePersonRelationships(familyNode, new Dictionary<string, string>());
+
+            // Assert
+            _familyTreeRepositoryMock.Verify(r => r.GetPersonByIdAsync(It.IsAny<int>()), Times.Never);
+            _familyTreeRepositoryMock.Verify(r => r.AddRelationShipAsync(It.IsAny<Relationship>()), Times.Never);
+            _familyTreeRepositoryMock.Verify(r => r.UpdateRelationshipAsync(It.IsAny<Relationship>()), Times.Never);
+        }
+
+        [Test]
+        public async Task UpdatePersonRelationships_Add_New_Pids_If_Not_Exist_Empty_Spouse_Relationships()
+        {
+            //Arange
+            _familyTreeRepositoryMock.Setup(repo => repo.GetSinglePersonRelationshipsAsync(It.IsAny<int>()))
+                .ReturnsAsync([
+                    new Relationship { PersonId1 = 1, PersonId2 = 2, RelationshipType = "father-son" }
+                ]);
+
+            _familyTreeRepositoryMock.Setup(repo => repo.GetPersonByIdAsync(It.IsAny<int>())).
+                ReturnsAsync(new Person { PersonId = 2, FirstName = "Jane", LastName = "Doe" });
+
+            var familyNode = new FamilyNodeDTO { Name = "John Doe", Id = "1", Pids = ["2"] };
+
+            // Act
+            await _familyTreeService.UpdatePersonRelationships(familyNode, new Dictionary<string, string> { { "_vT2m", "1" } });
+            // Assert
+            _familyTreeRepositoryMock.Verify(r => r.GetPersonByIdAsync(It.IsAny<int>()), Times.Once);
+            _familyTreeRepositoryMock.Verify(r => r.AddRelationShipAsync(It.IsAny<Relationship>()), Times.Once);
+            _familyTreeRepositoryMock.Verify(r => r.UpdateRelationshipAsync(It.IsAny<Relationship>()), Times.Never);
+        }
+
+        [Test]
+        public async Task UpdatePersonRelationships_Add_New_Pid_Additional_Spouse()
+        {
+            //Arange
+            _familyTreeRepositoryMock.Setup(repo => repo.GetSinglePersonRelationshipsAsync(It.IsAny<int>()))
+                .ReturnsAsync(new Relationship[] {
+                    new Relationship { PersonId1 = 1, PersonId2 = 2, RelationshipType = "spouse" }
+                });
+
+            _familyTreeRepositoryMock.Setup(repo => repo.GetPersonByIdAsync(It.Is<int>(v => v == 2))).
+                ReturnsAsync(new Person { PersonId = 2, FirstName = "Jane", LastName = "Doe" });
+            _familyTreeRepositoryMock.Setup(repo => repo.GetPersonByIdAsync(It.Is<int>(v => v == 3))).
+                ReturnsAsync(new Person { PersonId = 3, FirstName = "Joan", LastName = "Doe" });
+
+            var familyNode = new FamilyNodeDTO { Name = "John Doe", Id = "1", Pids = ["2","3"] };
+
+            // Act
+            await _familyTreeService.UpdatePersonRelationships(familyNode, new Dictionary<string, string>());
+
+            // Assert
+            _familyTreeRepositoryMock.Verify(r => r.GetPersonByIdAsync(It.IsAny<int>()), Times.Once);
+            _familyTreeRepositoryMock.Verify(r => r.AddRelationShipAsync(It.IsAny<Relationship>()), Times.Once);
+            _familyTreeRepositoryMock.Verify(r => r.UpdateRelationshipAsync(It.IsAny<Relationship>()), Times.Never);
+        }
+
+        [Test]
+        public async Task UpdatePersonRelationships_Add_New_Pid_Additional_Spouse_Use_NewId_Instead_Of_The_OldId()
+        {
+            //Arange
+            _familyTreeRepositoryMock.Setup(repo => repo.GetSinglePersonRelationshipsAsync(It.IsAny<int>()))
+                .ReturnsAsync([]);
+
+            _familyTreeRepositoryMock.Setup(repo => repo.GetPersonByIdAsync(It.Is<int>(v => v == 2))).
+                ReturnsAsync(new Person { PersonId = 2, FirstName = "Jane", LastName = "Doe" });
+
+            var familyNode = new FamilyNodeDTO { Name = "John Doe", Id = "1", Pids = ["_vT2m"] };
+
+            // Act
+            await _familyTreeService.UpdatePersonRelationships(familyNode, new Dictionary<string, string> { { "_vT2m", "2" } });
+
+            // Assert
+            _familyTreeRepositoryMock.Verify(r => r.GetPersonByIdAsync(It.IsAny<int>()), Times.Once);
+            _familyTreeRepositoryMock.Verify(r => r.AddRelationShipAsync(It.Is<Relationship>(
+                    rel => rel.PersonId2 == 2)), Times.Once);
+            _familyTreeRepositoryMock.Verify(r => r.UpdateRelationshipAsync(It.IsAny<Relationship>()), Times.Never);
+        }
+
+        [Test]
+        public async Task UpdatePersonRelationships_No_Changes_Father_Relationship()
+        {
+            //Arange
+            _familyTreeRepositoryMock.Setup(repo => repo.GetSinglePersonRelationshipsAsync(It.IsAny<int>()))
+                .ReturnsAsync(new Relationship[] {
+                    new Relationship { PersonId1 = 1, PersonId2 = 4, RelationshipType = "father-child" }
+                });
+
+            var familyNode = new FamilyNodeDTO { Name = "John Doe", Id = "1", Fid = "4" };
+
+            // Act
+            await _familyTreeService.UpdatePersonRelationships(familyNode, new Dictionary<string, string> { { "_vT2m", "2" } });
+
+            // Assert
+            _familyTreeRepositoryMock.Verify(r => r.GetPersonByIdAsync(It.IsAny<int>()), Times.Never);
+            _familyTreeRepositoryMock.Verify(r => r.AddRelationShipAsync(It.IsAny<Relationship>()), Times.Never);
+            _familyTreeRepositoryMock.Verify(r => r.UpdateRelationshipAsync(It.IsAny<Relationship>()), Times.Never);
+        }
+
+        [Test]
+        public async Task UpdatePersonRelationships_Add_New_Father_If_Not_Exist()
+        {
+            //Arange
+            _familyTreeRepositoryMock.Setup(repo => repo.GetSinglePersonRelationshipsAsync(It.IsAny<int>()))
+                .ReturnsAsync(new Relationship[] {
+                    new Relationship { PersonId1 = 1, PersonId2 = 2, RelationshipType = "spouse" }
+                });
+
+            _familyTreeRepositoryMock.Setup(repo => repo.GetPersonByIdAsync(It.Is<int>(v => v == 4))).
+                ReturnsAsync(new Person { PersonId = 4, FirstName = "Joe", LastName = "Doe" });
+
+            var familyNode = new FamilyNodeDTO { Name = "John Doe", Id = "1", Fid = "4" };
+
+            // Act
+            await _familyTreeService.UpdatePersonRelationships(familyNode, new Dictionary<string, string> { { "_vT2m", "2" } });
+            // Assert
+            _familyTreeRepositoryMock.Verify(r => r.GetPersonByIdAsync(It.IsAny<int>()), Times.Once);
+            _familyTreeRepositoryMock.Verify(r => r.AddRelationShipAsync(It.IsAny<Relationship>()), Times.Once);
+            _familyTreeRepositoryMock.Verify(r => r.UpdateRelationshipAsync(It.IsAny<Relationship>()), Times.Never);
+        }
+
+        [Test]
+        public async Task UpdatePersonRelationships_Add_New_Father_If_Not_Exist_Use_NewId()
+        {
+            //Arange
+            _familyTreeRepositoryMock.Setup(repo => repo.GetSinglePersonRelationshipsAsync(It.IsAny<int>()))
+                .ReturnsAsync(new Relationship[] {
+                    new Relationship { PersonId1 = 1, PersonId2 = 2, RelationshipType = "spouse" }
+                });
+
+            _familyTreeRepositoryMock.Setup(repo => repo.GetPersonByIdAsync(It.Is<int>(v => v == 4))).
+                ReturnsAsync(new Person { PersonId = 4, FirstName = "Joe", LastName = "Doe" });
+
+            var familyNode = new FamilyNodeDTO { Name = "John Doe", Id = "1", Fid = "_vT2m" };
+
+            // Act
+            await _familyTreeService.UpdatePersonRelationships(familyNode, new Dictionary<string, string> { { "_vT2m", "4" } });
+            // Assert
+            _familyTreeRepositoryMock.Verify(r => r.GetPersonByIdAsync(It.Is<int>(v => v == 4)), Times.Once);
+            _familyTreeRepositoryMock.Verify(r => r.AddRelationShipAsync(It.IsAny<Relationship>()), Times.Once);
+            _familyTreeRepositoryMock.Verify(r => r.UpdateRelationshipAsync(It.IsAny<Relationship>()), Times.Never);
+        }
+
+
+        [Test]
+        public async Task UpdatePersonRelationships_No_Changes_Mother_Relationship()
+        {
+            // Arrange
+            _familyTreeRepositoryMock.Setup(repo => repo.GetSinglePersonRelationshipsAsync(It.IsAny<int>()))
+                .ReturnsAsync(new Relationship[] {
+            new Relationship { PersonId1 = 1, PersonId2 = 5, RelationshipType = "mother-child" }
+                });
+
+            var familyNode = new FamilyNodeDTO { Name = "John Doe", Id = "1", Mid = "5" };
+
+            // Act
+            await _familyTreeService.UpdatePersonRelationships(familyNode, new Dictionary<string, string>());
+
+            // Assert
+            _familyTreeRepositoryMock.Verify(r => r.GetPersonByIdAsync(It.IsAny<int>()), Times.Never);
+            _familyTreeRepositoryMock.Verify(r => r.AddRelationShipAsync(It.IsAny<Relationship>()), Times.Never);
+            _familyTreeRepositoryMock.Verify(r => r.UpdateRelationshipAsync(It.IsAny<Relationship>()), Times.Never);
+        }
+
+        [Test]
+        public async Task UpdatePersonRelationships_Add_New_Mother_If_Not_Exist()
+        {
+            // Arrange
+            _familyTreeRepositoryMock.Setup(repo => repo.GetSinglePersonRelationshipsAsync(It.IsAny<int>()))
+                .ReturnsAsync(new Relationship[] {
+            new Relationship { PersonId1 = 1, PersonId2 = 2, RelationshipType = "spouse" }
+                });
+
+            _familyTreeRepositoryMock.Setup(repo => repo.GetPersonByIdAsync(It.Is<int>(v => v == 5)))
+                .ReturnsAsync(new Person { PersonId = 5, FirstName = "Jane", LastName = "Doe" });
+
+            var familyNode = new FamilyNodeDTO { Name = "John Doe", Id = "1", Mid = "5" };
+
+            // Act
+            await _familyTreeService.UpdatePersonRelationships(familyNode, new Dictionary<string, string>());
+
+            // Assert
+            _familyTreeRepositoryMock.Verify(r => r.GetPersonByIdAsync(It.IsAny<int>()), Times.Once);
+            _familyTreeRepositoryMock.Verify(r => r.AddRelationShipAsync(It.IsAny<Relationship>()), Times.Once);
+            _familyTreeRepositoryMock.Verify(r => r.UpdateRelationshipAsync(It.IsAny<Relationship>()), Times.Never);
+        }
+
+        [Test]
+        public async Task UpdatePersonRelationships_Add_New_Mother_If_Not_Exist_Use_NewId()
+        {
+            // Arrange
+            _familyTreeRepositoryMock.Setup(repo => repo.GetSinglePersonRelationshipsAsync(It.IsAny<int>()))
+                .ReturnsAsync(new Relationship[] {
+            new Relationship { PersonId1 = 1, PersonId2 = 2, RelationshipType = "spouse" }
+                });
+
+            _familyTreeRepositoryMock.Setup(repo => repo.GetPersonByIdAsync(It.Is<int>(v => v == 5)))
+                .ReturnsAsync(new Person { PersonId = 5, FirstName = "Jane", LastName = "Doe" });
+
+            var familyNode = new FamilyNodeDTO { Name = "John Doe", Id = "1", Mid = "_vT2m" };
+
+            // Act
+            await _familyTreeService.UpdatePersonRelationships(familyNode, new Dictionary<string, string> { { "_vT2m", "5" } });
+
+            // Assert
+            _familyTreeRepositoryMock.Verify(r => r.GetPersonByIdAsync(It.Is<int>(v => v == 5)), Times.Once);
+            _familyTreeRepositoryMock.Verify(r => r.AddRelationShipAsync(It.IsAny<Relationship>()), Times.Once);
+            _familyTreeRepositoryMock.Verify(r => r.UpdateRelationshipAsync(It.IsAny<Relationship>()), Times.Never);
+        }
+
     }
 }
