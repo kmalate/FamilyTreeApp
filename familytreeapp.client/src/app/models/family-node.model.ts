@@ -1,8 +1,8 @@
 export interface FamilyNode {
-  id: number;
-  pids: number[];
-  mid: number | null;
-  fid: number | null;
+  id: string;
+  pids: string[];
+  mid: string;
+  fid: string;
   name: string;
   gender: string;
 }

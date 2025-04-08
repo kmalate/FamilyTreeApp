@@ -53,9 +53,9 @@ namespace FamilyTreeApp.Server.UnitTests.Mapping
             Assert.Multiple(() =>
             {                
                 Assert.That(familyNodeDTO.Id.ToString(), Is.EqualTo("1"));
-                Assert.That(familyNodeDTO.Pids, Is.EqualTo(new List<int> { 2, 3 }));
-                Assert.That(familyNodeDTO.Mid, Is.EqualTo(4));
-                Assert.That(familyNodeDTO.Fid, Is.EqualTo(5));
+                Assert.That(familyNodeDTO.Pids, Is.EqualTo(new List<string> { "2","3" }));
+                Assert.That(familyNodeDTO.Mid, Is.EqualTo("4"));
+                Assert.That(familyNodeDTO.Fid, Is.EqualTo("5"));
                 Assert.That(familyNodeDTO.Name, Is.EqualTo("John Doe"));
                 Assert.That(familyNodeDTO.Gender, Is.EqualTo("Male"));
             });

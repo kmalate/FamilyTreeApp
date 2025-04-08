@@ -24,8 +24,8 @@ describe('FamilyserviceService', () => {
 
   it('should fetch family nodes', () => {
     const dummyFamilyNodes: FamilyNode[] = [
-      { id: 1, name: 'John Doe', gender: 'male' } as FamilyNode,
-      { id: 2, name: 'Jane Doe', gender: 'female' } as FamilyNode
+      { id: '1', name: 'John Doe', gender: 'male' } as FamilyNode,
+      { id: '2', name: 'Jane Doe', gender: 'female' } as FamilyNode
     ];
 
     service.getFamilyNodes().subscribe(nodes => {

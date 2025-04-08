@@ -46,9 +46,9 @@ namespace FamilyTreeApp.Server.UnitTests.Services
                 new FamilyNodeDTO
                 {
                     Id = "1",
-                    Pids = new List<int> { 2, 3 },
-                    Mid = 4,
-                    Fid = 5,
+                    Pids = new List<string> { "2", "3" },
+                    Mid = "4",
+                    Fid = "5",
                     Name = "John Doe",
                     Gender = "Male"
                 }
@@ -78,7 +78,7 @@ namespace FamilyTreeApp.Server.UnitTests.Services
             var args = new UpdateNodeArgsDTO {
                 UpdateNodesData =
                 [
-                    new () { Id = "1", Name = "John Doe", Pids = [2], Gender= "male" } 
+                    new () { Id = "1", Name = "John Doe", Pids = ["2"], Gender= "male" } 
                 ],
                 AddNodesData = []              
             };
@@ -102,7 +102,7 @@ namespace FamilyTreeApp.Server.UnitTests.Services
                 UpdateNodesData = [],
                 AddNodesData =
                 [
-                    new () { Id = "oldId1", Name = "John Doe", Pids = [2], Gender= "male" }
+                    new () { Id = "oldId1", Name = "John Doe", Pids = ["2"], Gender= "male" }
                 ],
             };
 

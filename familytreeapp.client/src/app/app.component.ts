@@ -27,10 +27,10 @@ export class AppComponent implements OnInit {
       const familyNode: FamilyNode = {
         id: node.id,
         name: node.name ? node.name : "",
-        mid: node.mid ? node.mid : null,
-        fid: node.fid ? node.fid : null,
-        gender: node.gender ? node.gender : null,
-        pids: node.pids ? node.pids : null,
+        mid: node.mid ? node.mid : "",
+        fid: node.fid ? node.fid : "",
+        gender: node.gender ? node.gender : "",
+        pids: node.pids ? node.pids : [],
       };
 
       familyNodes.push(familyNode);
@@ -68,6 +68,7 @@ export class AppComponent implements OnInit {
 
         this.familyService.updateFamilyTreeNodes(updateArgs).subscribe((response) => {
           this.familyTree?.replaceIds(response);
+          //TODO: replacedIds OldId to NewId still not reflecting in UI
         });
       });
 
