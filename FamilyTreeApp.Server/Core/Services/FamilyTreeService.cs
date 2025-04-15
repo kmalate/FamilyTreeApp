@@ -43,37 +43,27 @@ namespace FamilyTreeApp.Server.Core.Services
         public async Task<Dictionary<string, string>> UpdateFamilyTreeNodesAsync(UpdateNodeArgsDTO updateNodeArgs)
         {
             var oldIdNewId = new Dictionary<string, string>();
-            var addRelationshipTaskList = new List<Task>();
             // Add
             if (updateNodeArgs.AddNodesData.Length > 0)
             {
-                // Add new person/s first to get their database ids
-                var addPersonTaskList = new List<Task<KeyValuePair<string, int>>>();
+                // Add new person/s first to get their database ids                
                 foreach (var node in updateNodeArgs.AddNodesData)
                 {
 
-                    addPersonTaskList.Add(this.AddNewPersonAsync(node));
-                }
-
-                Task.WaitAll([.. addPersonTaskList]);
-                
-                foreach (var task in addPersonTaskList)
-                {
-                    var result = task.Result;                                        
-                    oldIdNewId.Add(result.Key, result.Value.ToString());                    
+                    var result = await this.AddNewPersonAsync(node);
+                    oldIdNewId.Add(result.Key, result.Value.ToString());
                 }
 
                 //Add new relationships                
                 foreach (var node in updateNodeArgs.AddNodesData)
                 {
-                    addRelationshipTaskList.Add(UpdatePersonRelationships(node, oldIdNewId));
+                    await UpdatePersonRelationships(node, oldIdNewId);
                 }
             }
 
             // Update
             if (updateNodeArgs.UpdateNodesData.Length > 0)
             {
-                var updateTaskList = new List<Task>();
                 foreach (var node in updateNodeArgs.UpdateNodesData)
                 {
                     var person = await _familyTreeRepository.GetPersonByIdAsync(int.Parse(node.Id));
@@ -83,23 +73,11 @@ namespace FamilyTreeApp.Server.Core.Services
                         person.FirstName = nameSplit[0];
                         person.LastName = nameSplit[1];
                         person.Gender = node.Gender;
-                        updateTaskList.Add(_familyTreeRepository.UpdatePersonAsync(person));
-                        addRelationshipTaskList.Add(UpdatePersonRelationships(node, oldIdNewId));
+                        await _familyTreeRepository.UpdatePersonAsync(person);
+                        await UpdatePersonRelationships(node, oldIdNewId);
                     }
                 }
-                
-                Task.WaitAll([.. updateTaskList]);
-                //TODO: Insert update relationship changes
-                //TODO: Fix error System.AggregateException: One or more errors occurred.
-                //(A second operation was started on this context instance before a previous operation completed.
-                //see https://go.microsoft.com/fwlink/?linkid=2097913.
-            }
-
-            if (addRelationshipTaskList.Any())
-            {
-                Task.WaitAll([.. addRelationshipTaskList]);
-            }
-            
+            }            
 
             return oldIdNewId;
         }
@@ -114,7 +92,7 @@ namespace FamilyTreeApp.Server.Core.Services
             if (familyNodeDTO.Pids != null && familyNodeDTO.Pids.Any())
             {
                 var spouses = relationShipList.Where(r => r.RelationshipType.Equals("spouse", StringComparison.OrdinalIgnoreCase));
-                var addSpouseTaskList = new List<Task>();
+                
                 foreach (var item in familyNodeDTO.Pids.Where(p => !spouses.Any(s => s.PersonId2.ToString() == p)))
                 {
                     //use newId if exists
@@ -129,14 +107,9 @@ namespace FamilyTreeApp.Server.Core.Services
                             PersonId2 = spouse.PersonId,
                             RelationshipType = "spouse"
                         };
-                        addSpouseTaskList.Add(_familyTreeRepository.AddRelationShipAsync(newRelationship));
+                        await _familyTreeRepository.AddRelationShipAsync(newRelationship);
                     }
-                }
-
-                if (addSpouseTaskList.Any())
-                {
-                    Task.WaitAll([.. addSpouseTaskList]);
-                }
+                }               
             }
 
             //Father
