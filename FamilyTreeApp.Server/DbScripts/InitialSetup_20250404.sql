@@ -33,17 +33,19 @@ CREATE TABLE IF NOT EXISTS Relationship (
 /* VIEWS */
 CREATE VIEW IF NOT EXISTS v_PersonRelationhip AS
     SELECT p.personid,
-           GROUP_CONCAT(CASE WHEN r.relationshiptype = 'spouse' THEN r.personid2 ELSE NULL END) spousepersonids,
-           MIN(CASE WHEN r.relationshiptype = 'mother-child' THEN r.personid2 ELSE NULL END) motherpersonid,
-           MIN(CASE WHEN r.relationshiptype = 'father-child' THEN r.personid2 ELSE NULL END) fatherpersonid,
-           p.firstname,
-           p.lastname,
-           p.gender,
-           p.img
-      FROM relationship r
-           JOIN
-           person p ON r.personid1 = p.personid
-     GROUP BY p.personid;
+       GROUP_CONCAT(DISTINCT partner.personid1) spousepersonids,
+       MIN(CASE WHEN parents.relationshiptype = 'mother-child' THEN parents.personid2 ELSE NULL END) motherpersonid,
+       MIN(CASE WHEN parents.relationshiptype = 'father-child' THEN parents.personid2 ELSE NULL END) fatherpersonid,
+       p.firstname,
+       p.lastname,
+       p.gender,
+       p.img
+    FROM person p
+    LEFT JOIN 
+        relationship parents ON parents.personid1 = p.personid
+    LEFT JOIN 
+        relationship partner ON partner.personid2 = p.personid AND partner.relationshiptype = 'spouse'
+    GROUP BY p.personid;
 /* END VIEWS */
 /* END OBJECTS */
 

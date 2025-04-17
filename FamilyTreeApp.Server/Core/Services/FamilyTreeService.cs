@@ -1,4 +1,5 @@
-﻿using AutoMapper;
+﻿using System.Xml.Linq;
+using AutoMapper;
 using FamilyTreeApp.Server.Core.Interfaces;
 using FamilyTreeApp.Server.Core.Models;
 using FamilyTreeApp.Server.Infrastructure.Interfaces;
@@ -77,7 +78,25 @@ namespace FamilyTreeApp.Server.Core.Services
                         await UpdatePersonRelationships(node, oldIdNewId);
                     }
                 }
-            }            
+            }
+
+            // Delete
+            if (updateNodeArgs.RemoveNodeId != null)
+            {
+                var person = await _familyTreeRepository.GetPersonByIdAsync(updateNodeArgs.RemoveNodeId.Value);
+
+                if (person != null)
+                {
+                    var relationShipList = await _familyTreeRepository.GetSinglePersonRelationshipsAsync(person.PersonId);
+                    // Remove relationships
+                    foreach (var relationship in relationShipList)
+                    {
+                        await _familyTreeRepository.DeleteRelationShipAsync(relationship);
+                    }
+                    // Delete person
+                    await _familyTreeRepository.DeletePersonAsync(person);
+                }
+            }
 
             return oldIdNewId;
         }
@@ -88,72 +107,80 @@ namespace FamilyTreeApp.Server.Core.Services
             var personId = oldIdNewId.ContainsKey(familyNodeDTO.Id) ? oldIdNewId[familyNodeDTO.Id] : familyNodeDTO.Id;
             var relationShipList = await _familyTreeRepository.GetSinglePersonRelationshipsAsync(int.Parse(personId));
 
-            // Spouse/s
-            if (familyNodeDTO.Pids != null && familyNodeDTO.Pids.Any())
-            {
-                var spouses = relationShipList.Where(r => r.RelationshipType.Equals("spouse", StringComparison.OrdinalIgnoreCase));
-                
-                foreach (var item in familyNodeDTO.Pids.Where(p => !spouses.Any(s => s.PersonId2.ToString() == p)))
-                {
-                    //use newId if exists
-                    var spouseId = (oldIdNewId.ContainsKey(item)) ? oldIdNewId[item] : item;
+            var spouses = relationShipList.Where(r => r.RelationshipType.Equals("spouse", StringComparison.OrdinalIgnoreCase));
 
-                    var spouse = await _familyTreeRepository.GetPersonByIdAsync(int.Parse(spouseId));
-                    if (spouse != null)
+            // Spouse/s           
+            //Add new spouse/s
+            foreach (var item in familyNodeDTO.Pids.Where(p => !spouses.Any(s => s.PersonId2.ToString() == p)))
+            {
+                //use newId if exists
+                var spouseId = (oldIdNewId.ContainsKey(item)) ? oldIdNewId[item] : item;
+
+                var spouse = await _familyTreeRepository.GetPersonByIdAsync(int.Parse(spouseId));
+                if (spouse != null)
+                {
+                    var newRelationship = new Relationship
                     {
-                        var newRelationship = new Relationship
-                        {
-                            PersonId1 = int.Parse(personId),
-                            PersonId2 = spouse.PersonId,
-                            RelationshipType = "spouse"
-                        };
-                        await _familyTreeRepository.AddRelationShipAsync(newRelationship);
-                    }
-                }               
+                        PersonId1 = int.Parse(personId),
+                        PersonId2 = spouse.PersonId,
+                        RelationshipType = "spouse"
+                    };
+                    await _familyTreeRepository.AddRelationShipAsync(newRelationship);
+                }
+            }
+
+            //Remove Spouse/s
+            foreach (var item in spouses.Where(s => !familyNodeDTO.Pids.Any(p => p == s.PersonId2.ToString())))
+            {
+                await _familyTreeRepository.DeleteRelationShipAsync(item);
             }
 
             //Father
-            if (!string.IsNullOrEmpty(familyNodeDTO.Fid))
+            var father = relationShipList.FirstOrDefault(r => r.RelationshipType.Equals("father-child", StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrEmpty(familyNodeDTO.Fid) && father == null)
             {
-                var father = relationShipList.FirstOrDefault(r => r.RelationshipType.Equals("father-child", StringComparison.OrdinalIgnoreCase));
-                if (father == null)
+                //use newId if exists
+                var fatherId = (oldIdNewId.ContainsKey(familyNodeDTO.Fid)) ? oldIdNewId[familyNodeDTO.Fid] : familyNodeDTO.Fid;
+                var fatherPerson = await _familyTreeRepository.GetPersonByIdAsync(int.Parse(fatherId));
+                if (fatherPerson != null)
                 {
-                    //use newId if exists
-                    var fatherId = (oldIdNewId.ContainsKey(familyNodeDTO.Fid)) ? oldIdNewId[familyNodeDTO.Fid] : familyNodeDTO.Fid;
-                    var fatherPerson = await _familyTreeRepository.GetPersonByIdAsync(int.Parse(fatherId));
-                    if (fatherPerson != null)
+                    var newRelationship = new Relationship
                     {
-                        var newRelationship = new Relationship
-                        {
-                            PersonId1 = int.Parse(personId),
-                            PersonId2 = fatherPerson.PersonId,
-                            RelationshipType = "father-child"
-                        };
-                        await _familyTreeRepository.AddRelationShipAsync(newRelationship);
-                    }
+                        PersonId1 = int.Parse(personId),
+                        PersonId2 = fatherPerson.PersonId,
+                        RelationshipType = "father-child"
+                    };
+                    await _familyTreeRepository.AddRelationShipAsync(newRelationship);
                 }
+            }
+            else if (father != null && string.IsNullOrEmpty(familyNodeDTO.Fid))
+            {
+                //remove relationship
+                await _familyTreeRepository.DeleteRelationShipAsync(father);
             }
 
             //Mother
-            if (!string.IsNullOrEmpty(familyNodeDTO.Mid))
+            var mother = relationShipList.FirstOrDefault(r => r.RelationshipType.Equals("mother-child", StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrEmpty(familyNodeDTO.Mid) && mother == null)
             {
-                var mother = relationShipList.FirstOrDefault(r => r.RelationshipType.Equals("mother-child", StringComparison.OrdinalIgnoreCase));
-                if (mother == null)
+                //use newId if exists
+                var motherId = (oldIdNewId.ContainsKey(familyNodeDTO.Mid)) ? oldIdNewId[familyNodeDTO.Mid] : familyNodeDTO.Mid;
+                var motherPerson = await _familyTreeRepository.GetPersonByIdAsync(int.Parse(motherId));
+                if (motherPerson != null)
                 {
-                    //use newId if exists
-                    var motherId = (oldIdNewId.ContainsKey(familyNodeDTO.Mid)) ? oldIdNewId[familyNodeDTO.Mid] : familyNodeDTO.Mid;
-                    var motherPerson = await _familyTreeRepository.GetPersonByIdAsync(int.Parse(motherId));
-                    if (motherPerson != null)
+                    var newRelationship = new Relationship
                     {
-                        var newRelationship = new Relationship
-                        {
-                            PersonId1 = int.Parse(personId),
-                            PersonId2 = motherPerson.PersonId,
-                            RelationshipType = "mother-child"
-                        };
-                        await _familyTreeRepository.AddRelationShipAsync(newRelationship);
-                    }
+                        PersonId1 = int.Parse(personId),
+                        PersonId2 = motherPerson.PersonId,
+                        RelationshipType = "mother-child"
+                    };
+                    await _familyTreeRepository.AddRelationShipAsync(newRelationship);
                 }
+            }
+            else if (mother != null && string.IsNullOrEmpty(familyNodeDTO.Mid))
+            {
+                //remove relationship
+                await _familyTreeRepository.DeleteRelationShipAsync(mother);
             }
         }
     }
